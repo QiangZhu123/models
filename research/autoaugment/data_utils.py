@@ -31,7 +31,7 @@ import tensorflow as tf
 # pylint:disable=logging-format-interpolation
 
 
-class DataSet(object):
+class DataSet(object):#构造出整个数据集
   """Dataset object that produces augmented training and eval data."""
 
   def __init__(self, hparams):
@@ -39,24 +39,24 @@ class DataSet(object):
     self.epochs = 0
     self.curr_train_index = 0
 
-    all_labels = []
+    all_labels = []#标签
 
-    self.good_policies = found_policies.good_policies()
+    self.good_policies = found_policies.good_policies()#加载入所有的指定的政策
 
-    # Determine how many databatched to load
-    num_data_batches_to_load = 5
+    # Determine how many databatched to load因为是针对cifar10,cifar100数据集，所以已制定好了batch
+    num_data_batches_to_load = 5#共有5个batch
     total_batches_to_load = num_data_batches_to_load
     train_batches_to_load = total_batches_to_load
     assert hparams.train_size + hparams.validation_size <= 50000
-    if hparams.eval_test:
+    if hparams.eval_test:#如果有test 的batch ，则总共有6个，其中训练的是5个
       total_batches_to_load += 1
     # Determine how many images we have loaded
-    total_dataset_size = 10000 * num_data_batches_to_load
+    total_dataset_size = 10000 * num_data_batches_to_load#每个batch10000个图片
     train_dataset_size = total_dataset_size
-    if hparams.eval_test:
+    if hparams.eval_test:#如果有test则要加10000个
       total_dataset_size += 10000
 
-    if hparams.dataset == 'cifar10':
+    if hparams.dataset == 'cifar10':#大小为（5，10000，3072）
       all_data = np.empty((total_batches_to_load, 10000, 3072), dtype=np.uint8)
     elif hparams.dataset == 'cifar100':
       assert num_data_batches_to_load == 5
@@ -67,10 +67,10 @@ class DataSet(object):
       tf.logging.info('Cifar10')
       datafiles = [
           'data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4',
-          'data_batch_5']
+          'data_batch_5']#所有的batch文件
 
       datafiles = datafiles[:train_batches_to_load]
-      if hparams.eval_test:
+      if hparams.eval_test:#如果有test则要载入
         datafiles.append('test_batch')
       num_classes = 10
     elif hparams.dataset == 'cifar100':
@@ -95,7 +95,7 @@ class DataSet(object):
         nsamples = len(labels)
         for idx in range(nsamples):
           all_labels.append(labels[idx])
-
+        #对所有的数据进行统一大小，并且归一化
     all_data = all_data.reshape(total_dataset_size, 3072)
     all_data = all_data.reshape(-1, 3, 32, 32)
     all_data = all_data.transpose(0, 2, 3, 1).copy()
@@ -124,7 +124,7 @@ class DataSet(object):
     all_data = all_data[perm]
     all_labels = all_labels[perm]
 
-    # Break into train and val
+    # Break into train and val将所有的图片分为训练集和测试集
     train_size, val_size = hparams.train_size, hparams.validation_size
     assert 50000 >= train_size + val_size
     self.train_images = all_data[:train_size]
@@ -133,9 +133,9 @@ class DataSet(object):
     self.val_labels = all_labels[train_size:train_size + val_size]
     self.num_train = self.train_images.shape[0]
 
-  def next_batch(self):
+  def next_batch(self):#制作每个batch，并且使用变形
     """Return the next minibatch of augmented data."""
-    next_train_index = self.curr_train_index + self.hparams.batch_size
+    next_train_index = self.curr_train_index + self.hparams.batch_size#指定图片索引
     if next_train_index > self.num_train:
       # Increase epoch number
       epoch = self.epochs + 1
@@ -146,14 +146,14 @@ class DataSet(object):
                           self.curr_train_index + self.hparams.batch_size],
         self.train_labels[self.curr_train_index:
                           self.curr_train_index + self.hparams.batch_size])
-    final_imgs = []
+    final_imgs = []#存储最后生成的图片
 
     images, labels = batched_data
     for data in images:
       epoch_policy = self.good_policies[np.random.choice(
           len(self.good_policies))]
       final_img = augmentation_transforms.apply_policy(
-          epoch_policy, data)
+          epoch_policy, data)#修改：调用变形应用函数
       final_img = augmentation_transforms.random_flip(
           augmentation_transforms.zero_pad_and_crop(final_img, 4))
       # Apply cutout
