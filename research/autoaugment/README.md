@@ -65,3 +65,11 @@ python train_cifar.py --model_name=wrn \
 
 *   Barret Zoph, @barretzoph <barretzoph@google.com>
 *   Ekin Dogus Cubuk, <cubuk@google.com>
+## 文件标注
+整个auto的使用是针对预处理部分，所以对于网络的结构并没有改变，只有简单的调用
+主要的文件在于政策的选择和在第一个augmentation_transforms.py文件内置的apply方法的调用
+policies.py 包含了适合cifar10,cifar100数据集的变化方法，如若想用其他数据集，则可在论文的附表中查看并自己写列表。
+augmentation_transforms.py中包含了所有的变化方法，以及对图片的使用函数，使用函数的调用是在data_utils.py文件中
+custom_ops.py中定义了网络的常用函数，包括卷积层，BN层
+data_utils.py构造数据集文件，
+helper_utils.py辅助文件，和auto无关
