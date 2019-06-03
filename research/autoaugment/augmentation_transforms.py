@@ -26,14 +26,14 @@ from PIL import ImageOps, ImageEnhance, ImageFilter, Image
 # pylint:enable=g-multiple-import
 
 
-IMAGE_SIZE = 32
+IMAGE_SIZE = 32#修改：图片大小
 # What is the dataset mean and std of the images on the training set
 MEANS = [0.49139968, 0.48215841, 0.44653091]
 STDS = [0.24703223, 0.24348513, 0.26158784]
 PARAMETER_MAX = 10  # What is the max 'level' a transform could be predicted
 
 
-def random_flip(x):
+def random_flip(x):#随机反转
   """Flip the input x horizontally with 50% probability."""
   if np.random.rand(1)[0] > 0.5:
     return np.fliplr(x)
@@ -163,7 +163,7 @@ def pil_unwrap(pil_img):
   return pic_array
 
 
-def apply_policy(policy, img):
+def apply_policy(policy, img):#对图片使用指定的policy，其调用就是在data_util中
   """Apply the `policy` to the numpy `img`.
 
   Args:
