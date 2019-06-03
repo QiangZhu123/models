@@ -14,26 +14,7 @@ AutoAugment: Learning Augmentation Policies from Data
 
 https://arxiv.org/abs/1805.09501
 
-Wide Residual Networks
 
-https://arxiv.org/abs/1605.07146
-
-Shake-Shake regularization
-
-https://arxiv.org/abs/1705.07485
-
-ShakeDrop regularization
-
-https://arxiv.org/abs/1802.02375
-
-<b>Settings:</b>
-
-CIFAR-10 Model         | Learning Rate | Weight Decay | Num. Epochs | Batch Size
----------------------- | ------------- | ------------ | ----------- | ----------
-Wide-ResNet-28-10      | 0.1           | 5e-4         | 200         | 128
-Shake-Shake (26 2x32d) | 0.01          | 1e-3         | 1800        | 128
-Shake-Shake (26 2x96d) | 0.01          | 1e-3         | 1800        | 128
-PyramidNet + ShakeDrop | 0.05          | 5e-5         | 1800        | 64
 
 <b>Prerequisite:</b>
 
@@ -63,8 +44,8 @@ python train_cifar.py --model_name=wrn \
 
 ## Contact for Issues
 
-*   Barret Zoph, @barretzoph <barretzoph@google.com>
-*   Ekin Dogus Cubuk, <cubuk@google.com>
+
+
 ## 文件标注
 整个auto的使用是针对预处理部分，所以对于网络的结构并没有改变，只有简单的调用
 主要的文件在于政策的选择和在第一个augmentation_transforms.py文件内置的apply方法的调用
