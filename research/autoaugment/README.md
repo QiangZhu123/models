@@ -16,12 +16,6 @@ https://arxiv.org/abs/1805.09501
 
 
 
-<b>Prerequisite:</b>
-
-1.  Install TensorFlow. Be sure to run the code using python2 and not python3.
-
-2.  Download CIFAR-10/CIFAR-100 dataset.
-
 ```shell
 curl -o cifar-10-binary.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz
 curl -o cifar-100-binary.tar.gz https://www.cs.toronto.edu/~kriz/cifar-100-binary.tar.gz
