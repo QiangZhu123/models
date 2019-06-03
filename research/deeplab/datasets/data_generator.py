@@ -95,14 +95,14 @@ _ADE20K_INFORMATION = DatasetDescriptor(
     num_classes=151,
     ignore_label=0,
 )
-
+#修改：如果要用自己的数据集，则模仿这个制作一个 DatasetDescriptor再放入到下面的字典中
 _DATASETS_INFORMATION = {
     'cityscapes': _CITYSCAPES_INFORMATION,
     'pascal_voc_seg': _PASCAL_VOC_SEG_INFORMATION,
     'ade20k': _ADE20K_INFORMATION,
 }
 
-# Default file pattern of TFRecord of TensorFlow Example.
+# Default file pattern of TFRecord of TensorFlow Example.要求的是TFrecord格式的数据集
 _FILE_PATTERN = '%s-*'
 
 
@@ -133,10 +133,10 @@ class Dataset(object):
     """Initializes the dataset.
 
     Args:
-      dataset_name: Dataset name.
+      dataset_name: Dataset name.数据集名称
       split_name: A train/val Split name.
-      dataset_dir: The directory of the dataset sources.
-      batch_size: Batch size.
+      dataset_dir: The directory of the dataset sources.数据集路径
+      batch_size: Batch size.大小
       crop_size: The size used to crop the image and label.
       min_resize_value: Desired size of the smaller image side.
       max_resize_value: Maximum allowed size of the larger image side.
@@ -157,11 +157,11 @@ class Dataset(object):
     Raises:
       ValueError: Dataset name and split name are not supported.
     """
-    if dataset_name not in _DATASETS_INFORMATION:
+    if dataset_name not in _DATASETS_INFORMATION:#满足上面的修改
       raise ValueError('The specified dataset is not supported yet.')
     self.dataset_name = dataset_name
 
-    splits_to_sizes = _DATASETS_INFORMATION[dataset_name].splits_to_sizes
+    splits_to_sizes = _DATASETS_INFORMATION[dataset_name].splits_to_sizes#一个字典，包含训练集和验证集的大小
 
     if split_name not in splits_to_sizes:
       raise ValueError('data split name %s not recognized' % split_name)
@@ -190,7 +190,7 @@ class Dataset(object):
     self.num_of_classes = _DATASETS_INFORMATION[self.dataset_name].num_classes
     self.ignore_label = _DATASETS_INFORMATION[self.dataset_name].ignore_label
 
-  def _parse_function(self, example_proto):
+  def _parse_function(self, example_proto):#解析函数，解析每个example
     """Function to parse the example proto.
 
     Args:
@@ -237,7 +237,7 @@ class Dataset(object):
     label = None
     if self.split_name != common.TEST_SET:
       label = _decode_image(
-          parsed_features['image/segmentation/class/encoded'], channels=1)
+          parsed_features['image/segmentation/class/encoded'], channels=1)#label也是一个单通道的图片，要解码
 
     image_name = parsed_features['image/filename']
     if image_name is None:
@@ -248,7 +248,7 @@ class Dataset(object):
         common.IMAGE_NAME: image_name,
         common.HEIGHT: parsed_features['image/height'],
         common.WIDTH: parsed_features['image/width'],
-    }
+    }#一个样本为一个字典的形式保存
 
     if label is not None:
       if label.get_shape().ndims == 2:
@@ -259,13 +259,13 @@ class Dataset(object):
         raise ValueError('Input label shape must be [height, width], or '
                          '[height, width, 1].')
 
-      label.set_shape([None, None, 1])
+      label.set_shape([None, None, 1])#将label的通道设置为1
 
       sample[common.LABELS_CLASS] = label
 
     return sample
 
-  def _preprocess_image(self, sample):
+  def _preprocess_image(self, sample):#输入一个样本后，要对其进行预处理
     """Preprocesses the image and label.
 
     Args:
@@ -277,8 +277,8 @@ class Dataset(object):
     Raises:
       ValueError: Ground truth label not provided during training.
     """
-    image = sample[common.IMAGE]
-    label = sample[common.LABELS_CLASS]
+    image = sample[common.IMAGE]#选中字典中的图片
+    label = sample[common.LABELS_CLASS]#选中label
 
     original_image, image, label = input_preprocess.preprocess_image_and_label(
         image=image,
