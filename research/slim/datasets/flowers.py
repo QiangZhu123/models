@@ -29,9 +29,9 @@ from datasets import dataset_utils
 
 slim = tf.contrib.slim
 
-_FILE_PATTERN = 'flowers_%s_*.tfrecord'
+_FILE_PATTERN = 'flowers_%s_*.tfrecord'#flower_train_00001.tfrecord
 
-SPLITS_TO_SIZES = {'train': 3320, 'validation': 350}
+SPLITS_TO_SIZES = {'train': 3320, 'validation': 350}#这里意思是将数据全部读入后，进行划分处理
 
 _NUM_CLASSES = 5
 
@@ -82,10 +82,10 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   }
 
   decoder = slim.tfexample_decoder.TFExampleDecoder(
-      keys_to_features, items_to_handlers)
+      keys_to_features, items_to_handlers)#解码tfexample
 
   labels_to_names = None
-  if dataset_utils.has_labels(dataset_dir):
+  if dataset_utils.has_labels(dataset_dir):#类和名称的对应，如果有，就读入
     labels_to_names = dataset_utils.read_label_file(dataset_dir)
 
   return slim.dataset.Dataset(
