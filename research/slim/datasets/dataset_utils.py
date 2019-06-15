@@ -26,7 +26,7 @@ import tensorflow as tf
 
 LABELS_FILENAME = 'labels.txt'
 
-
+#制作TFRECORD格式
 def int64_feature(values):
   """Returns a TF-Feature of int64s.
 
@@ -98,10 +98,10 @@ def image_to_tfexample(image_data, image_format, height, width, class_id):
       'image/class/label': int64_feature(class_id),
       'image/height': int64_feature(height),
       'image/width': int64_feature(width),
-  }))
+  }))#将图片转化为tfexample，如果图片有更多信息需要添加进入特征
 
 
-def download_and_uncompress_tarball(tarball_url, dataset_dir):
+def download_and_uncompress_tarball(tarball_url, dataset_dir):#下载数据集，没用，可以注销掉
   """Downloads the `tarball_url` and uncompresses it locally.
 
   Args:
@@ -123,7 +123,7 @@ def download_and_uncompress_tarball(tarball_url, dataset_dir):
 
 
 def write_label_file(labels_to_class_names, dataset_dir,
-                     filename=LABELS_FILENAME):
+                     filename=LABELS_FILENAME):#将{类名：整数}的字典写入txt文件中，每个一行
   """Writes a file with the list of class names.
 
   Args:
@@ -135,7 +135,7 @@ def write_label_file(labels_to_class_names, dataset_dir,
   with tf.gfile.Open(labels_filename, 'w') as f:
     for label in labels_to_class_names:
       class_name = labels_to_class_names[label]
-      f.write('%d:%s\n' % (label, class_name))
+      f.write('%d:%s\n' % (label, class_name))#形式
 
 
 def has_labels(dataset_dir, filename=LABELS_FILENAME):
@@ -148,10 +148,10 @@ def has_labels(dataset_dir, filename=LABELS_FILENAME):
   Returns:
     `True` if the labels file exists and `False` otherwise.
   """
-  return tf.gfile.Exists(os.path.join(dataset_dir, filename))
+  return tf.gfile.Exists(os.path.join(dataset_dir, filename))#判断是否存在文件
 
 
-def read_label_file(dataset_dir, filename=LABELS_FILENAME):
+def read_label_file(dataset_dir, filename=LABELS_FILENAME):#将上面提到的txt文件，再反过来读成字典
   """Reads the labels file and returns a mapping from ID to class name.
 
   Args:
@@ -162,15 +162,15 @@ def read_label_file(dataset_dir, filename=LABELS_FILENAME):
     A map from a label (integer) to class name.
   """
   labels_filename = os.path.join(dataset_dir, filename)
-  with tf.gfile.Open(labels_filename, 'rb') as f:
-    lines = f.read().decode()
+  with tf.gfile.Open(labels_filename, 'rb') as f:#打开txt文件
+    lines = f.read().decode()#读一行
   lines = lines.split('\n')
   lines = filter(None, lines)
 
-  labels_to_class_names = {}
+  labels_to_class_names = {}#字典
   for line in lines:
     index = line.index(':')
-    labels_to_class_names[int(line[:index])] = line[index+1:]
+    labels_to_class_names[int(line[:index])] = line[index+1:]#生成字典格式数据
   return labels_to_class_names
 
 
@@ -189,11 +189,11 @@ def open_sharded_output_tfrecords(exit_stack, base_path, num_shards):
   tf_record_output_filenames = [
       '{}-{:05d}-of-{:05d}'.format(base_path, idx, num_shards)
       for idx in range(num_shards)
-  ]
+  ]#构造所有的tfrecord文件名列表
 
   tfrecords = [
       exit_stack.enter_context(tf.python_io.TFRecordWriter(file_name))
       for file_name in tf_record_output_filenames
-  ]
+  ]#这里就是创建TFrecord格式文件了
 
   return tfrecords
