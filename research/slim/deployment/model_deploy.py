@@ -120,7 +120,7 @@ Clone = collections.namedtuple('Clone',
                                ['outputs',  # Whatever model_fn() returned.
                                 'scope',  # The scope used to create it.
                                 'device',  # The device used to create.
-                               ])
+                               ])#部署的参数
 
 # Namedtuple used to represent a DeployedModel, returned by deploy().
 DeployedModel = collections.namedtuple('DeployedModel',
@@ -128,7 +128,7 @@ DeployedModel = collections.namedtuple('DeployedModel',
                                         'summary_op',  # The `summary_op`
                                         'total_loss',  # The loss `Tensor`
                                         'clones',  # A list of `Clones` tuples.
-                                       ])
+                                       ])#每个部署模型的参数
 
 # Default parameters for DeploymentConfig
 _deployment_params = {'num_clones': 1,
@@ -473,7 +473,7 @@ def _add_gradients_summaries(grads_and_vars):
   return summaries
 
 
-class DeploymentConfig(object):
+class DeploymentConfig(object):#主类
   """Configuration for deploying a model with `deploy()`.
 
   You can pass an instance of this class to `deploy()` to specify exactly
