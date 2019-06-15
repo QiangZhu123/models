@@ -30,12 +30,13 @@ datasets_map = {
     'imagenet': imagenet,
     'mnist': mnist,
     'visualwakewords': visualwakewords,
-}
+}#如果有新的数据集，可以自己制作一个读取的脚本，修改这里进行调用
 
 
 def get_dataset(name, split_name, dataset_dir, file_pattern=None, reader=None):
   """Given a dataset name and a split_name returns a Dataset.
-
+name=调用脚本名称
+split_name=用于训练的文件
   Args:
     name: String, the name of the dataset.
     split_name: A train/test split name.
