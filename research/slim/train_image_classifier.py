@@ -230,7 +230,7 @@ tf.app.flags.DEFINE_boolean(
 
 FLAGS = tf.app.flags.FLAGS
 
-
+#按照参数将学习率设置好
 def _configure_learning_rate(num_samples_per_epoch, global_step):
   """Configures the learning rate.
 
@@ -274,7 +274,7 @@ def _configure_learning_rate(num_samples_per_epoch, global_step):
     raise ValueError('learning_rate_decay_type [%s] was not recognized' %
                      FLAGS.learning_rate_decay_type)
 
-
+#按照参数指定好优化器
 def _configure_optimizer(learning_rate):
   """Configures the optimizer used for training.
 
@@ -326,7 +326,7 @@ def _configure_optimizer(learning_rate):
     raise ValueError('Optimizer [%s] was not recognized' % FLAGS.optimizer)
   return optimizer
 
-
+#按照参数选择是否加载预训练参数
 def _get_init_fn():
   """Returns a function run by the chief worker to warm-start the training.
 
@@ -374,30 +374,30 @@ def _get_init_fn():
       ignore_missing_vars=FLAGS.ignore_missing_vars)
 
 
-def _get_variables_to_train():
+def _get_variables_to_train():#返回需要训练的层，列表的形式
   """Returns a list of variables to train.
 
   Returns:
     A list of variables to train by the optimizer.
   """
-  if FLAGS.trainable_scopes is None:
+  if FLAGS.trainable_scopes is None:#如果没有指定了要训练的层，则返回所有可以训练的层
     return tf.trainable_variables()
   else:
-    scopes = [scope.strip() for scope in FLAGS.trainable_scopes.split(',')]
+    scopes = [scope.strip() for scope in FLAGS.trainable_scopes.split(',')]#指定的层
 
-  variables_to_train = []
+  variables_to_train = []#需要训练的层，空列表
   for scope in scopes:
-    variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
-    variables_to_train.extend(variables)
+    variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)#取出
+    variables_to_train.extend(variables)#加入到列表中
   return variables_to_train
 
 
-def main(_):
-  if not FLAGS.dataset_dir:
+def main(_):#主函数
+  if not FLAGS.dataset_dir:#必须输入的参数，数据路径
     raise ValueError('You must supply the dataset directory with --dataset_dir')
 
   tf.logging.set_verbosity(tf.logging.INFO)
-  with tf.Graph().as_default():
+  with tf.Graph().as_default():#默认图
     #######################
     # Config model_deploy #
     #######################
@@ -406,17 +406,17 @@ def main(_):
         clone_on_cpu=FLAGS.clone_on_cpu,
         replica_id=FLAGS.task,
         num_replicas=FLAGS.worker_replicas,
-        num_ps_tasks=FLAGS.num_ps_tasks)
+        num_ps_tasks=FLAGS.num_ps_tasks)#先配置参数
 
     # Create global_step
-    with tf.device(deploy_config.variables_device()):
+    with tf.device(deploy_config.variables_device()):#在指定的设备上初始化所有参数
       global_step = slim.create_global_step()
 
     ######################
     # Select the dataset #
     ######################
     dataset = dataset_factory.get_dataset(
-        FLAGS.dataset_name, FLAGS.dataset_split_name, FLAGS.dataset_dir)
+        FLAGS.dataset_name, FLAGS.dataset_split_name, FLAGS.dataset_dir)#生成数据集
 
     ######################
     # Select the network #
@@ -425,7 +425,7 @@ def main(_):
         FLAGS.model_name,
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         weight_decay=FLAGS.weight_decay,
-        is_training=True)
+        is_training=True)#生成网络
 
     #####################################
     # Select the preprocessing function #
@@ -433,12 +433,12 @@ def main(_):
     preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
     image_preprocessing_fn = preprocessing_factory.get_preprocessing(
         preprocessing_name,
-        is_training=True)
+        is_training=True)#需预处理的方式
 
     ##############################################################
     # Create a dataset provider that loads data from the dataset #
     ##############################################################
-    with tf.device(deploy_config.inputs_device()):
+    with tf.device(deploy_config.inputs_device()):#用provider进行数据提取
       provider = slim.dataset_data_provider.DatasetDataProvider(
           dataset,
           num_readers=FLAGS.num_readers,
