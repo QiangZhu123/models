@@ -63,7 +63,7 @@ def get_channel_index(data_format=INVALID):
 
 
 @tf.contrib.framework.add_arg_scope
-def get_channel_dim(shape, data_format=INVALID):
+def get_channel_dim(shape, data_format=INVALID):#返回通道数
   assert data_format != INVALID
   assert len(shape) == 4
   if data_format == 'NHWC':
@@ -87,22 +87,22 @@ def global_avg_pool(x, data_format=INVALID):
 
 
 @tf.contrib.framework.add_arg_scope
-def factorized_reduction(net, output_filters, stride, data_format=INVALID):
+def factorized_reduction(net, output_filters, stride, data_format=INVALID):#拆分执行卷积，两个并行的路径
   """Reduces the shape of net without information loss due to striding."""
   assert data_format != INVALID
-  if stride == 1:
+  if stride == 1:#只需要执行一次卷积
     net = slim.conv2d(net, output_filters, 1, scope='path_conv')
     net = slim.batch_norm(net, scope='path_bn')
     return net
-  if data_format == 'NHWC':
+  if data_format == 'NHWC':#调整数据格式
     stride_spec = [1, stride, stride, 1]
   else:
     stride_spec = [1, 1, stride, stride]
 
   # Skip path 1
   path1 = tf.nn.avg_pool(
-      net, [1, 1, 1, 1], stride_spec, 'VALID', data_format=data_format)
-  path1 = slim.conv2d(path1, int(output_filters / 2), 1, scope='path1_conv')
+      net, [1, 1, 1, 1], stride_spec, 'VALID', data_format=data_format)#平均池化
+  path1 = slim.conv2d(path1, int(output_filters / 2), 1, scope='path1_conv')#第一个分支，输出一半的通道数
 
   # Skip path 2
   # First pad with 0's on the right and bottom, then shift the filter to
@@ -120,12 +120,12 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
       path2, [1, 1, 1, 1], stride_spec, 'VALID', data_format=data_format)
 
   # If odd number of filters, add an additional one to the second path.
-  final_filter_size = int(output_filters / 2) + int(output_filters % 2)
+  final_filter_size = int(output_filters / 2) + int(output_filters % 2)#第二个路径
   path2 = slim.conv2d(path2, final_filter_size, 1, scope='path2_conv')
 
   # Concat and apply BN
-  final_path = tf.concat(values=[path1, path2], axis=concat_axis)
-  final_path = slim.batch_norm(final_path, scope='final_path_bn')
+  final_path = tf.concat(values=[path1, path2], axis=concat_axis)#组合两个路径的结果
+  final_path = slim.batch_norm(final_path, scope='final_path_bn')#BN层
   return final_path
 
 
@@ -144,22 +144,22 @@ def drop_path(net, keep_prob, is_training=True):
   return net
 
 
-def _operation_to_filter_shape(operation):
-  splitted_operation = operation.split('x')
-  filter_shape = int(splitted_operation[0][-1])
+def _operation_to_filter_shape(operation):#输入卷积字符串进行解析‘separable_3x3_4’
+  splitted_operation = operation.split('x')#
+  filter_shape = int(splitted_operation[0][-1])#卷积的尺寸
   assert filter_shape == int(
       splitted_operation[1][0]), 'Rectangular filters not supported.'
   return filter_shape
 
 
-def _operation_to_num_layers(operation):
-  splitted_operation = operation.split('_')
-  if 'x' in splitted_operation[-1]:
+def _operation_to_num_layers(operation):#输入卷积字符串进行解析‘separable_3x3_4’
+  splitted_operation = operation.split('_')#分割的个数，X是Xception
+  if 'x' in splitted_operation[-1]:#是几层的意思
     return 1
-  return int(splitted_operation[-1])
+  return int(splitted_operation[-1])#否则按照要求执行
 
 
-def _operation_to_info(operation):
+def _operation_to_info(operation):#根据操作的名字来确定卷积的方式separable_3x3_4-> (3, 4)
   """Takes in operation name and returns meta information.
 
   An example would be 'separable_3x3_4' -> (3, 4).
@@ -170,17 +170,17 @@ def _operation_to_info(operation):
   Returns:
     Tuple of (filter shape, num layers).
   """
-  num_layers = _operation_to_num_layers(operation)
+  num_layers = _operation_to_num_layers(operation)#分割的要求个数4
   filter_shape = _operation_to_filter_shape(operation)
   return num_layers, filter_shape
 
 
 def _stacked_separable_conv(net, stride, operation, filter_size,
-                            use_bounded_activation):
+                            use_bounded_activation):#一个完整的字符串卷积操作 ，使用的是separable_conv
   """Takes in an operations and parses it to the correct sep operation."""
-  num_layers, kernel_size = _operation_to_info(operation)
-  activation_fn = tf.nn.relu6 if use_bounded_activation else tf.nn.relu
-  for layer_num in range(num_layers - 1):
+  num_layers, kernel_size = _operation_to_info(operation)#根据卷积的字符串，提取出卷积的尺寸和个数
+  activation_fn = tf.nn.relu6 if use_bounded_activation else tf.nn.relu#指定激活函数
+  for layer_num in range(num_layers - 1):#先执行n-1次
     net = activation_fn(net)
     net = slim.separable_conv2d(
         net,
@@ -243,16 +243,16 @@ def _pooling(net, stride, operation, use_bounded_activation):
   return net
 
 
-class NasNetABaseCell(object):
+class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
   """NASNet Cell class that is used as a 'layer' in image architectures.
 
   Args:
-    num_conv_filters: The number of filters for each convolution operation.
+    num_conv_filters: The number of filters for each convolution operation.每个卷积滤波个数
     operations: List of operations that are performed in the NASNet Cell in
-      order.
+      order.Cell中的操作列表
     used_hiddenstates: Binary array that signals if the hiddenstate was used
       within the cell. This is used to determine what outputs of the cell
-      should be concatenated together.
+      should be concatenated together.来确定
     hiddenstate_indices: Determines what hiddenstates should be combined
       together with the specified operations to create the NASNet cell.
     use_bounded_activation: Whether or not to use bounded activations. Bounded
@@ -271,66 +271,69 @@ class NasNetABaseCell(object):
     self._total_training_steps = total_training_steps
     self._use_bounded_activation = use_bounded_activation
 
-  def _reduce_prev_layer(self, prev_layer, curr_layer):
+  def _reduce_prev_layer(self, prev_layer, curr_layer):#和前一层维度进行匹配，对前一层进行卷积处理
     """Matches dimension of prev_layer to the curr_layer."""
     # Set the prev layer to the current layer if it is none
-    if prev_layer is None:
+    if prev_layer is None:#如果没有给定前一层，则返回当前层
       return curr_layer
     curr_num_filters = self._filter_size
-    prev_num_filters = get_channel_dim(prev_layer.shape)
-    curr_filter_shape = int(curr_layer.shape[2])
-    prev_filter_shape = int(prev_layer.shape[2])
+    prev_num_filters = get_channel_dim(prev_layer.shape)#返回前一层通道数
+    
+    curr_filter_shape = int(curr_layer.shape[2])#当前层大小
+    prev_filter_shape = int(prev_layer.shape[2])#前层大小
+    
     activation_fn = tf.nn.relu6 if self._use_bounded_activation else tf.nn.relu
-    if curr_filter_shape != prev_filter_shape:
-      prev_layer = activation_fn(prev_layer)
+    
+    if curr_filter_shape != prev_filter_shape:#如果当前滤波尺寸和浅层不一样大小
+      prev_layer = activation_fn(prev_layer)#激活
       prev_layer = factorized_reduction(
-          prev_layer, curr_num_filters, stride=2)
-    elif curr_num_filters != prev_num_filters:
+          prev_layer, curr_num_filters, stride=2)#当stride=1就是标准卷积，否则执行两个并行的卷积，1*1卷积
+    elif curr_num_filters != prev_num_filters:#滤波个数不同
       prev_layer = activation_fn(prev_layer)
       prev_layer = slim.conv2d(
-          prev_layer, curr_num_filters, 1, scope='prev_1x1')
+          prev_layer, curr_num_filters, 1, scope='prev_1x1')#执行1*1卷积
       prev_layer = slim.batch_norm(prev_layer, scope='prev_bn')
     return prev_layer
 
   def _cell_base(self, net, prev_layer):
     """Runs the beginning of the conv cell before the predicted ops are run."""
-    num_filters = self._filter_size
+    num_filters = self._filter_size#滤波个数
 
     # Check to be sure prev layer stuff is setup correctly
-    prev_layer = self._reduce_prev_layer(prev_layer, net)
+    prev_layer = self._reduce_prev_layer(prev_layer, net)#对前一层进行卷积处理
 
-    net = tf.nn.relu6(net) if self._use_bounded_activation else tf.nn.relu(net)
-    net = slim.conv2d(net, num_filters, 1, scope='1x1')
-    net = slim.batch_norm(net, scope='beginning_bn')
+    net = tf.nn.relu6(net) if self._use_bounded_activation else tf.nn.relu(net)#激活
+    net = slim.conv2d(net, num_filters, 1, scope='1x1')#1*1卷积
+    net = slim.batch_norm(net, scope='beginning_bn')#BN层
     # num_or_size_splits=1
     net = [net]
-    net.append(prev_layer)
+    net.append(prev_layer)#放入当前的状态列表中
     return net
 
   def __call__(self, net, scope=None, filter_scaling=1, stride=1,
-               prev_layer=None, cell_num=-1, current_step=None):
+               prev_layer=None, cell_num=-1, current_step=None):#运行函数
     """Runs the conv cell."""
-    self._cell_num = cell_num
-    self._filter_scaling = filter_scaling
-    self._filter_size = int(self._num_conv_filters * filter_scaling)
+    self._cell_num = cell_num#cell个数
+    self._filter_scaling = filter_scaling#通道缩放
+    self._filter_size = int(self._num_conv_filters * filter_scaling)#是否改变滤波的个数
 
     i = 0
     with tf.variable_scope(scope):
-      net = self._cell_base(net, prev_layer)
-      for iteration in range(5):
+      net = self._cell_base(net, prev_layer)#[net,pre_layer]
+      for iteration in range(5):#B=5
         with tf.variable_scope('comb_iter_{}'.format(iteration)):
           left_hiddenstate_idx, right_hiddenstate_idx = (
               self._hiddenstate_indices[i],
-              self._hiddenstate_indices[i + 1])
+              self._hiddenstate_indices[i + 1])#左边的状态索引，右边的状态索引
           original_input_left = left_hiddenstate_idx < 2
           original_input_right = right_hiddenstate_idx < 2
-          h1 = net[left_hiddenstate_idx]
+          h1 = net[left_hiddenstate_idx]#从状态列表中，根据索引拿出两个状态h1,和h2
           h2 = net[right_hiddenstate_idx]
-
-          operation_left = self._operations[i]
-          operation_right = self._operations[i+1]
+          #选中左右两边状态的操作
+          operation_left = self._operations[i]#左边状态的操作
+          operation_right = self._operations[i+1]#右边状态的操作
           i += 2
-          # Apply conv operations
+          # Apply conv operations应用卷积
           with tf.variable_scope('left'):
             h1 = self._apply_conv_operation(h1, operation_left,
                                             stride, original_input_left,
@@ -340,36 +343,36 @@ class NasNetABaseCell(object):
                                             stride, original_input_right,
                                             current_step)
 
-          # Combine hidden states using 'add'.
+          # Combine hidden states using 'add'.组合两个生成的状态
           with tf.variable_scope('combine'):
             h = h1 + h2
             if self._use_bounded_activation:
               h = tf.nn.relu6(h)
 
           # Add hiddenstate to the list of hiddenstates we can choose from
-          net.append(h)
+          net.append(h)#放入状态列表
 
       with tf.variable_scope('cell_output'):
-        net = self._combine_unused_states(net)
+        net = self._combine_unused_states(net)#所有隐藏状态都进行了选择concat，是当前cell的完整输出
 
       return net
 
   def _apply_conv_operation(self, net, operation,
-                            stride, is_from_original_input, current_step):
+                            stride, is_from_original_input, current_step):#对状态使用指定的卷积
     """Applies the predicted conv operation to net."""
     # Dont stride if this is not one of the original hiddenstates
     if stride > 1 and not is_from_original_input:
       stride = 1
-    input_filters = get_channel_dim(net.shape)
-    filter_size = self._filter_size
-    if 'separable' in operation:
+    input_filters = get_channel_dim(net.shape)#获得当前状态的通道数
+    filter_size = self._filter_size#滤波大小
+    if 'separable' in operation:#根据操作的字符串是否有separable来确定卷积类型
       net = _stacked_separable_conv(net, stride, operation, filter_size,
-                                    self._use_bounded_activation)
-      if self._use_bounded_activation:
+                                    self._use_bounded_activation)#一次完整的字符串卷积执行
+      if self._use_bounded_activation:#边界激活，就是值的裁剪，范围（-CLIP_BY_VALUE_CAP, CLIP_BY_VALUE_CAP）
         net = tf.clip_by_value(net, -CLIP_BY_VALUE_CAP, CLIP_BY_VALUE_CAP)
-    elif operation in ['none']:
+    elif operation in ['none']:#如果没有操作，执行以下处理
       if self._use_bounded_activation:
-        net = tf.nn.relu6(net)
+        net = tf.nn.relu6(net)#直接激活
       # Check if a stride is needed, then use a strided 1x1 here
       if stride > 1 or (input_filters != filter_size):
         if not self._use_bounded_activation:
@@ -378,8 +381,8 @@ class NasNetABaseCell(object):
         net = slim.batch_norm(net, scope='bn_1')
         if self._use_bounded_activation:
           net = tf.clip_by_value(net, -CLIP_BY_VALUE_CAP, CLIP_BY_VALUE_CAP)
-    elif 'pool' in operation:
-      net = _pooling(net, stride, operation, self._use_bounded_activation)
+    elif 'pool' in operation:#池化操作
+      net = _pooling(net, stride, operation, self._use_bounded_activation)#池化
       if input_filters != filter_size:
         net = slim.conv2d(net, filter_size, 1, stride=1, scope='1x1')
         net = slim.batch_norm(net, scope='bn_1')
@@ -388,23 +391,23 @@ class NasNetABaseCell(object):
     else:
       raise ValueError('Unimplemented operation', operation)
 
-    if operation != 'none':
+    if operation != 'none':#正则化方法droppath
       net = self._apply_drop_path(net, current_step=current_step)
     return net
 
-  def _combine_unused_states(self, net):
+  def _combine_unused_states(self, net):#输入的是状态列表
     """Concatenate the unused hidden states of the cell."""
     used_hiddenstates = self._used_hiddenstates
 
-    final_height = int(net[-1].shape[2])
-    final_num_filters = get_channel_dim(net[-1].shape)
+    final_height = int(net[-1].shape[2])#最后一个状态特征图的大小
+    final_num_filters = get_channel_dim(net[-1].shape)#通道个数
     assert len(used_hiddenstates) == len(net)
     for idx, used_h in enumerate(used_hiddenstates):
       curr_height = int(net[idx].shape[2])
       curr_num_filters = get_channel_dim(net[idx].shape)
 
       # Determine if a reduction should be applied to make the number of
-      # filters match.
+      # filters match.确定当前选中的隐藏状态是否和最后的输出尺寸匹配，不匹配要进行修改
       should_reduce = final_num_filters != curr_num_filters
       should_reduce = (final_height != curr_height) or should_reduce
       should_reduce = should_reduce and not used_h
@@ -412,14 +415,14 @@ class NasNetABaseCell(object):
         stride = 2 if final_height != curr_height else 1
         with tf.variable_scope('reduction_{}'.format(idx)):
           net[idx] = factorized_reduction(
-              net[idx], final_num_filters, stride)
+              net[idx], final_num_filters, stride)#就是调整两个不同大小的特征图尺寸，将所有状态的尺寸都调整后才能进行concat
 
     states_to_combine = (
-        [h for h, is_used in zip(net, used_hiddenstates) if not is_used])
+        [h for h, is_used in zip(net, used_hiddenstates) if not is_used])#选择出要用的隐藏状态
 
     # Return the concat of all the states
     concat_axis = get_channel_index()
-    net = tf.concat(values=states_to_combine, axis=concat_axis)
+    net = tf.concat(values=states_to_combine, axis=concat_axis)#对其进行concat
     return net
 
   @tf.contrib.framework.add_arg_scope  # No public API. For internal use only.
