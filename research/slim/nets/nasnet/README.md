@@ -62,3 +62,9 @@ python tensorflow_models/research/slim/eval_image_classifier \
 --model_name=nasnet_large \
 --eval_image_size=331
 ```
+
+
+## 注释
+该模型是一个已经预先训练得到的结果模型，整个模型是由文章中的CELL所构成，所以整体上不需要修改。
+模型可变动的地方在于nasnet_utils.py最后对于基本CELL的调用的修改。
+hiddenstate_indices，operations ，used_hiddenstates这三个量实际上就是通过学习得到的最优模型结构，可以按照文章中图给出的最优CELL结构进行修改即可，他们的含义就是根据索引来调用训练时候产生的状态。
