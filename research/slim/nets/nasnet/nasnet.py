@@ -487,7 +487,7 @@ def _build_nasnet_base(images,
   # Run the cells
   filter_scaling = 1.0
   # true_cell_num accounts for the stem cells
-  true_cell_num = 2 if stem_type == 'imagenet' else 0
+  true_cell_num = 2 if stem_type == 'imagenet' else 0#这个是指开头已经有了两个cell
   activation_fn = tf.nn.relu6 if hparams.use_bounded_activation else tf.nn.relu
   for cell_num in range(hparams.num_cells):#18
     stride = 1
