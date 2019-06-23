@@ -45,7 +45,7 @@ INVALID = 'null'
 CLIP_BY_VALUE_CAP = 6
 
 
-def calc_reduction_layers(num_cells, num_reduction_layers):
+def calc_reduction_layers(num_cells, num_reduction_layers):#给定了一共有多少个cell，和red cell的个数，将其分割插入
   """Figure out what layers should have reductions."""
   reduction_layers = []
   for pool_num in range(1, num_reduction_layers + 1):
@@ -75,7 +75,7 @@ def get_channel_dim(shape, data_format=INVALID):#返回通道数
 
 
 @tf.contrib.framework.add_arg_scope
-def global_avg_pool(x, data_format=INVALID):
+def global_avg_pool(x, data_format=INVALID):#全局池化层
   """Average pool away the height and width spatial dimensions of x."""
   assert data_format != INVALID
   assert data_format in ['NHWC', 'NCHW']
@@ -170,15 +170,15 @@ def _operation_to_info(operation):#根据操作的名字来确定卷积的方式
   Returns:
     Tuple of (filter shape, num layers).
   """
-  num_layers = _operation_to_num_layers(operation)#分割的要求个数4
-  filter_shape = _operation_to_filter_shape(operation)
+  num_layers = _operation_to_num_layers(operation)#分割的要求个数4层
+  filter_shape = _operation_to_filter_shape(operation)#卷积大小
   return num_layers, filter_shape
 
 
 def _stacked_separable_conv(net, stride, operation, filter_size,
                             use_bounded_activation):#一个完整的字符串卷积操作 ，使用的是separable_conv
   """Takes in an operations and parses it to the correct sep operation."""
-  num_layers, kernel_size = _operation_to_info(operation)#根据卷积的字符串，提取出卷积的尺寸和个数
+  num_layers, kernel_size = _operation_to_info(operation)#根据卷积的字符串，提取出卷积的尺寸和个数i.e。4,3
   activation_fn = tf.nn.relu6 if use_bounded_activation else tf.nn.relu#指定激活函数
   for layer_num in range(num_layers - 1):#先执行n-1次
     net = activation_fn(net)
@@ -201,16 +201,16 @@ def _stacked_separable_conv(net, stride, operation, filter_size,
       scope='separable_{0}x{0}_{1}'.format(kernel_size, num_layers),
       stride=stride)
   net = slim.batch_norm(
-      net, scope='bn_sep_{0}x{0}_{1}'.format(kernel_size, num_layers))
+      net, scope='bn_sep_{0}x{0}_{1}'.format(kernel_size, num_layers))#最后层要加上BN层
   return net
 
-
-def _operation_to_pooling_type(operation):
+#池化层字符串的处理
+def _operation_to_pooling_type(operation):#池化层字符串的处理
   """Takes in the operation string and returns the pooling type."""
   splitted_operation = operation.split('_')
   return splitted_operation[0]
 
-
+#池化层字符串的处理
 def _operation_to_pooling_shape(operation):
   """Takes in the operation string and returns the pooling kernel shape."""
   splitted_operation = operation.split('_')
@@ -220,7 +220,7 @@ def _operation_to_pooling_shape(operation):
   assert filter_height == filter_width
   return int(filter_height)
 
-
+#池化层字符串的处理
 def _operation_to_pooling_info(operation):
   """Parses the pooling operation string to return its type and shape."""
   pooling_type = _operation_to_pooling_type(operation)
@@ -228,11 +228,11 @@ def _operation_to_pooling_info(operation):
   return pooling_type, pooling_shape
 
 
-def _pooling(net, stride, operation, use_bounded_activation):
+def _pooling(net, stride, operation, use_bounded_activation):#一个完整的池化字符串执行
   """Parses operation and performs the correct pooling operation on net."""
   padding = 'SAME'
-  pooling_type, pooling_shape = _operation_to_pooling_info(operation)
-  if use_bounded_activation:
+  pooling_type, pooling_shape = _operation_to_pooling_info(operation)#提取池化的大小和类型
+  if use_bounded_activation:#特殊激活方式
     net = tf.nn.relu6(net)
   if pooling_type == 'avg':
     net = slim.avg_pool2d(net, pooling_shape, stride=stride, padding=padding)
@@ -297,10 +297,10 @@ class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
 
   def _cell_base(self, net, prev_layer):
     """Runs the beginning of the conv cell before the predicted ops are run."""
-    num_filters = self._filter_size#滤波个数
+    num_filters = self._filter_size#滤波个数64
 
     # Check to be sure prev layer stuff is setup correctly
-    prev_layer = self._reduce_prev_layer(prev_layer, net)#对前一层进行卷积处理
+    prev_layer = self._reduce_prev_layer(prev_layer, net)#对前一层进行卷积处理，让他和当前层尺寸相当
 
     net = tf.nn.relu6(net) if self._use_bounded_activation else tf.nn.relu(net)#激活
     net = slim.conv2d(net, num_filters, 1, scope='1x1')#1*1卷积
@@ -315,7 +315,7 @@ class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
     """Runs the conv cell."""
     self._cell_num = cell_num#cell个数
     self._filter_scaling = filter_scaling#通道缩放
-    self._filter_size = int(self._num_conv_filters * filter_scaling)#是否改变滤波的个数
+    self._filter_size = int(self._num_conv_filters * filter_scaling)#是否改变滤波的个数32*2.0
 
     i = 0
     with tf.variable_scope(scope):
@@ -324,15 +324,27 @@ class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
         with tf.variable_scope('comb_iter_{}'.format(iteration)):
           left_hiddenstate_idx, right_hiddenstate_idx = (
               self._hiddenstate_indices[i],
-              self._hiddenstate_indices[i + 1])#左边的状态索引，右边的状态索引
+              self._hiddenstate_indices[i + 1])#左边的状态索引，右边的状态索引[0, 1, 0, 1, 0, 1, 3, 2, 2, 0]
           original_input_left = left_hiddenstate_idx < 2
           original_input_right = right_hiddenstate_idx < 2
           h1 = net[left_hiddenstate_idx]#从状态列表中，根据索引拿出两个状态h1,和h2
           h2 = net[right_hiddenstate_idx]
+          '''
           #选中左右两边状态的操作
+          ['separable_5x5_2',
+                  'separable_3x3_2',
+                  'separable_5x5_2',
+                  'separable_3x3_2',
+                  'avg_pool_3x3',
+                  'none',
+                  'avg_pool_3x3',
+                  'avg_pool_3x3',
+                  'separable_3x3_2',
+                  'none']
+              '''
           operation_left = self._operations[i]#左边状态的操作
           operation_right = self._operations[i+1]#右边状态的操作
-          i += 2
+          i += 2#一次做两个，所以索引要往后移动两位
           # Apply conv operations应用卷积
           with tf.variable_scope('left'):
             h1 = self._apply_conv_operation(h1, operation_left,
@@ -395,9 +407,9 @@ class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
       net = self._apply_drop_path(net, current_step=current_step)
     return net
 
-  def _combine_unused_states(self, net):#输入的是状态列表
+  def _combine_unused_states(self, net):#输入的是状态列表，要返回的是最终一个cell的输出结果
     """Concatenate the unused hidden states of the cell."""
-    used_hiddenstates = self._used_hiddenstates
+    used_hiddenstates = self._used_hiddenstates#[1, 1, 1, 0, 0, 0, 0]
 
     final_height = int(net[-1].shape[2])#最后一个状态特征图的大小
     final_num_filters = get_channel_dim(net[-1].shape)#通道个数
@@ -410,12 +422,12 @@ class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
       # filters match.确定当前选中的隐藏状态是否和最后的输出尺寸匹配，不匹配要进行修改
       should_reduce = final_num_filters != curr_num_filters
       should_reduce = (final_height != curr_height) or should_reduce
-      should_reduce = should_reduce and not used_h
+      should_reduce = should_reduce and not used_h#没有用过的特征要和最后一个特征concat后输出
       if should_reduce:
         stride = 2 if final_height != curr_height else 1
         with tf.variable_scope('reduction_{}'.format(idx)):
           net[idx] = factorized_reduction(
-              net[idx], final_num_filters, stride)#就是调整两个不同大小的特征图尺寸，将所有状态的尺寸都调整后才能进行concat
+              net[idx], final_num_filters, stride)#就是调整两个不同大小的特征图尺寸，将所有没有用的状态的尺寸都调整后才能进行concat
 
     states_to_combine = (
         [h for h, is_used in zip(net, used_hiddenstates) if not is_used])#选择出要用的隐藏状态
@@ -517,7 +529,7 @@ class NasNetAReductionCell(NasNetABaseCell):
                   'separable_3x3_2',
                   'max_pool_3x3']
     used_hiddenstates = [1, 1, 1, 0, 0, 0, 0]
-    hiddenstate_indices = [0, 1, 0, 1, 0, 1, 3, 2, 2, 0]
+    hiddenstate_indices = [0, 1, 0, 1, 0, 1, 3, 2, 2, 0]#这个是已经预先搜索完成的模型，如果想要调整的话就修改这个列表就可以了
     super(NasNetAReductionCell, self).__init__(num_conv_filters, operations,
                                                used_hiddenstates,
                                                hiddenstate_indices,
