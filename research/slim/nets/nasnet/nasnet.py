@@ -253,7 +253,7 @@ def _imagenet_stem(inputs, hparams, stem_cell, current_step=None):
   """Stem used for models trained on ImageNet."""
   num_stem_cells = 2
 
-  # 149 x 149 x 32
+  # 149 x 149 x 32第一层初始卷积层，为3*3
   num_stem_filters = int(32 * hparams.stem_multiplier)
   net = slim.conv2d(
       inputs, num_stem_filters, [3, 3], stride=2, scope='conv0',
@@ -263,7 +263,7 @@ def _imagenet_stem(inputs, hparams, stem_cell, current_step=None):
   # Run the reduction cells
   cell_outputs = [None, net]
   filter_scaling = 1.0 / (hparams.filter_scaling_rate**num_stem_cells)
-  for cell_num in range(num_stem_cells):
+  for cell_num in range(num_stem_cells):#几个stem
     net = stem_cell(
         net,
         scope='cell_stem_{}'.format(cell_num),
@@ -467,11 +467,11 @@ def _build_nasnet_base(images,
 
   # Find where to place the reduction cells or stride normal cells
   reduction_indices = nasnet_utils.calc_reduction_layers(
-      hparams.num_cells, hparams.num_reduction_layers)#计算出哪些层是reduction层，返回其索引
+      hparams.num_cells, hparams.num_reduction_layers)#计算出哪些层是reduction层，返回其索引[6,12]大概是1：2
   stem_cell = reduction_cell
 
   if stem_type == 'imagenet':#前端
-    stem = lambda: _imagenet_stem(images, hparams, stem_cell)
+    stem = lambda: _imagenet_stem(images, hparams, stem_cell)#开始的网络部分，返回net,[None,net，net]
   elif stem_type == 'cifar':
     stem = lambda: _cifar_stem(images, hparams)
   else:
@@ -481,7 +481,7 @@ def _build_nasnet_base(images,
 
   # Setup for building in the auxiliary head.
   aux_head_cell_idxes = []#辅助层
-  if len(reduction_indices) >= 2:
+  if len(reduction_indices) >= 2:#[6，12]到第二部分了
     aux_head_cell_idxes.append(reduction_indices[1] - 1)
 
   # Run the cells
@@ -489,9 +489,9 @@ def _build_nasnet_base(images,
   # true_cell_num accounts for the stem cells
   true_cell_num = 2 if stem_type == 'imagenet' else 0
   activation_fn = tf.nn.relu6 if hparams.use_bounded_activation else tf.nn.relu
-  for cell_num in range(hparams.num_cells):
+  for cell_num in range(hparams.num_cells):#18
     stride = 1
-    if hparams.skip_reduction_layer_input:
+    if hparams.skip_reduction_layer_input:#是否有跳跃链接
       prev_layer = cell_outputs[-2]
     if cell_num in reduction_indices:
       filter_scaling *= hparams.filter_scaling_rate
@@ -502,13 +502,13 @@ def _build_nasnet_base(images,
           stride=2,
           prev_layer=cell_outputs[-2],
           cell_num=true_cell_num,
-          current_step=current_step)
+          current_step=current_step)#reduction模块
       if add_and_check_endpoint(
           'Reduction_Cell_{}'.format(reduction_indices.index(cell_num)), net):
         return net, end_points
-      true_cell_num += 1
-      cell_outputs.append(net)
-    if not hparams.skip_reduction_layer_input:
+      true_cell_num += 1#完成一个cell+1
+      cell_outputs.append(net)#结果放入列表
+    if not hparams.skip_reduction_layer_input:#同上
       prev_layer = cell_outputs[-2]
     net = normal_cell(
         net,
@@ -517,20 +517,20 @@ def _build_nasnet_base(images,
         stride=stride,
         prev_layer=prev_layer,
         cell_num=true_cell_num,
-        current_step=current_step)
+        current_step=current_step)#还有一个cell
 
-    if add_and_check_endpoint('Cell_{}'.format(cell_num), net):
+    if add_and_check_endpoint('Cell_{}'.format(cell_num), net):#是否结束
       return net, end_points
-    true_cell_num += 1
+    true_cell_num += 1#再加一
     if (hparams.use_aux_head and cell_num in aux_head_cell_idxes and
         num_classes and is_training):
       aux_net = activation_fn(net)
       _build_aux_head(aux_net, end_points, num_classes, hparams,
-                      scope='aux_{}'.format(cell_num))
+                      scope='aux_{}'.format(cell_num))#网络头部分
     cell_outputs.append(net)
 
   # Final softmax layer
-  with tf.variable_scope('final_layer'):
+  with tf.variable_scope('final_layer'):#最后的激活层
     net = activation_fn(net)
     net = nasnet_utils.global_avg_pool(net)#全局池化层
     if add_and_check_endpoint('global_pool', net) or not num_classes:
