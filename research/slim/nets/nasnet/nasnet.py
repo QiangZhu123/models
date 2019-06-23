@@ -460,27 +460,27 @@ def _build_nasnet_base(images,
                        current_step=None):
   """Constructs a NASNet image model."""
 
-  end_points = {}
-  def add_and_check_endpoint(endpoint_name, net):
+  end_points = {}#保存的位置，
+  def add_and_check_endpoint(endpoint_name, net):#检测是不是网络结尾层
     end_points[endpoint_name] = net
     return final_endpoint and (endpoint_name == final_endpoint)
 
   # Find where to place the reduction cells or stride normal cells
   reduction_indices = nasnet_utils.calc_reduction_layers(
-      hparams.num_cells, hparams.num_reduction_layers)
+      hparams.num_cells, hparams.num_reduction_layers)#计算出哪些层是reduction层，返回其索引
   stem_cell = reduction_cell
 
-  if stem_type == 'imagenet':
+  if stem_type == 'imagenet':#前端
     stem = lambda: _imagenet_stem(images, hparams, stem_cell)
   elif stem_type == 'cifar':
     stem = lambda: _cifar_stem(images, hparams)
   else:
     raise ValueError('Unknown stem_type: ', stem_type)
   net, cell_outputs = stem()
-  if add_and_check_endpoint('Stem', net): return net, end_points
+  if add_and_check_endpoint('Stem', net): return net, end_points#如果没有了，
 
   # Setup for building in the auxiliary head.
-  aux_head_cell_idxes = []
+  aux_head_cell_idxes = []#辅助层
   if len(reduction_indices) >= 2:
     aux_head_cell_idxes.append(reduction_indices[1] - 1)
 
@@ -532,7 +532,7 @@ def _build_nasnet_base(images,
   # Final softmax layer
   with tf.variable_scope('final_layer'):
     net = activation_fn(net)
-    net = nasnet_utils.global_avg_pool(net)
+    net = nasnet_utils.global_avg_pool(net)#全局池化层
     if add_and_check_endpoint('global_pool', net) or not num_classes:
       return net, end_points
     net = slim.dropout(net, hparams.dense_dropout_keep_prob, scope='dropout')
