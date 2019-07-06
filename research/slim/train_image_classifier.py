@@ -445,21 +445,21 @@ def main(_):#主函数
           common_queue_capacity=20 * FLAGS.batch_size,
           common_queue_min=10 * FLAGS.batch_size)
       [image, label] = provider.get(['image', 'label'])
-      label -= FLAGS.labels_offset
+      label -= FLAGS.labels_offset#标签是否要处理
 
-      train_image_size = FLAGS.train_image_size or network_fn.default_image_size
+      train_image_size = FLAGS.train_image_size or network_fn.default_image_size#训练图的大小
 
-      image = image_preprocessing_fn(image, train_image_size, train_image_size)
+      image = image_preprocessing_fn(image, train_image_size, train_image_size)#根据指定训练图大小来预处理所有的图
 
       images, labels = tf.train.batch(
           [image, label],
           batch_size=FLAGS.batch_size,
           num_threads=FLAGS.num_preprocessing_threads,
-          capacity=5 * FLAGS.batch_size)
+          capacity=5 * FLAGS.batch_size)#生成训练数据的batch序列
       labels = slim.one_hot_encoding(
-          labels, dataset.num_classes - FLAGS.labels_offset)
+          labels, dataset.num_classes - FLAGS.labels_offset)#对分类任务要对y进行编码工作
       batch_queue = slim.prefetch_queue.prefetch_queue(
-          [images, labels], capacity=2 * deploy_config.num_clones)
+          [images, labels], capacity=2 * deploy_config.num_clones)#生成的数据队列，每次出几个，分给几个模型
 
     ####################
     # Define the model #
@@ -476,13 +476,13 @@ def main(_):#主函数
         slim.losses.softmax_cross_entropy(
             end_points['AuxLogits'], labels,
             label_smoothing=FLAGS.label_smoothing, weights=0.4,
-            scope='aux_loss')
+            scope='aux_loss')#损失函数设置
       slim.losses.softmax_cross_entropy(
           logits, labels, label_smoothing=FLAGS.label_smoothing, weights=1.0)
       return end_points
 
     # Gather initial summaries.
-    summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
+    summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))#监测集合
 
     clones = model_deploy.create_clones(deploy_config, clone_fn, [batch_queue])
     first_clone_scope = deploy_config.clone_scope(0)
