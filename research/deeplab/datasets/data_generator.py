@@ -230,16 +230,16 @@ class Dataset(object):
             tf.FixedLenFeature((), tf.string, default_value='png'),
     }
 
-    parsed_features = tf.parse_single_example(example_proto, features)
+    parsed_features = tf.parse_single_example(example_proto, features)#解析Example的函数
 
-    image = _decode_image(parsed_features['image/encoded'], channels=3)
+    image = _decode_image(parsed_features['image/encoded'], channels=3)#解码图片
 
-    label = None
+    label = None#标签
     if self.split_name != common.TEST_SET:
       label = _decode_image(
           parsed_features['image/segmentation/class/encoded'], channels=1)#label也是一个单通道的图片，要解码
 
-    image_name = parsed_features['image/filename']
+    image_name = parsed_features['image/filename']#图片名字
     if image_name is None:
       image_name = tf.constant('')
 
@@ -261,11 +261,11 @@ class Dataset(object):
 
       label.set_shape([None, None, 1])#将label的通道设置为1
 
-      sample[common.LABELS_CLASS] = label
+      sample[common.LABELS_CLASS] = label#将label放入样本的字典中
 
     return sample
 
-  def _preprocess_image(self, sample):#输入一个样本后，要对其进行预处理
+  def _preprocess_image(self, sample):#输入一个样本字典后，解析之后要对其进行预处理
     """Preprocesses the image and label.
 
     Args:
@@ -299,14 +299,14 @@ class Dataset(object):
 
     if not self.is_training:
       # Original image is only used during visualization.
-      sample[common.ORIGINAL_IMAGE] = original_image
+      sample[common.ORIGINAL_IMAGE] = original_image#原始图片
 
     if label is not None:
       sample[common.LABEL] = label
 
     # Remove common.LABEL_CLASS key in the sample since it is only used to
     # derive label and not used in training and evaluation.
-    sample.pop(common.LABELS_CLASS, None)
+    sample.pop(common.LABELS_CLASS, None)#丢掉没有处理的label
 
     return sample
 
@@ -317,15 +317,15 @@ class Dataset(object):
       An iterator of type tf.data.Iterator.
     """
 
-    files = self._get_all_files()
+    files = self._get_all_files()#所有文件
 
     dataset = (
         tf.data.TFRecordDataset(files, num_parallel_reads=self.num_readers)
         .map(self._parse_function, num_parallel_calls=self.num_readers)
-        .map(self._preprocess_image, num_parallel_calls=self.num_readers))
+        .map(self._preprocess_image, num_parallel_calls=self.num_readers))#这里可以看到，他是解析TF文件后直接使用了parse和预处理函数的
 
     if self.should_shuffle:
-      dataset = dataset.shuffle(buffer_size=100)
+      dataset = dataset.shuffle(buffer_size=100)#打乱
 
     if self.should_repeat:
       dataset = dataset.repeat()  # Repeat forever for training.
@@ -333,7 +333,7 @@ class Dataset(object):
       dataset = dataset.repeat(1)
 
     dataset = dataset.batch(self.batch_size).prefetch(self.batch_size)
-    return dataset.make_one_shot_iterator()
+    return dataset.make_one_shot_iterator()#进行一次
 
   def _get_all_files(self):
     """Gets all the files to read data from.
