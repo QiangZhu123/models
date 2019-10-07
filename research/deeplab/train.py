@@ -24,7 +24,7 @@ from deeplab import common
 from deeplab import model
 from deeplab.datasets import data_generator
 from deeplab.utils import train_utils
-
+#定义所有参数
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
@@ -428,18 +428,18 @@ def _train_deeplab_model(iterator, num_of_classes, ignore_label):
   return train_tensor, summary_op
 
 
-def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
+def main(unused_argv):#主函数
+  tf.logging.set_verbosity(tf.logging.INFO)#直接log打印
 
-  tf.gfile.MakeDirs(FLAGS.train_logdir)
-  tf.logging.info('Training on %s set', FLAGS.train_split)
+  tf.gfile.MakeDirs(FLAGS.train_logdir)#创建文件夹
+  tf.logging.info('Training on %s set', FLAGS.train_split)#关于训练数据集的信息
 
-  graph = tf.Graph()
-  with graph.as_default():
-    with tf.device(tf.train.replica_device_setter(ps_tasks=FLAGS.num_ps_tasks)):
+  graph = tf.Graph()#创建默认图
+  with graph.as_default():#打开图
+    with tf.device(tf.train.replica_device_setter(ps_tasks=FLAGS.num_ps_tasks)):#指定多个设备同样执行图
       assert FLAGS.train_batch_size % FLAGS.num_clones == 0, (
-          'Training batch size not divisble by number of clones (GPUs).')
-      clone_batch_size = FLAGS.train_batch_size // FLAGS.num_clones
+          'Training batch size not divisble by number of clones (GPUs).')#确保batch_size可以正好的分到各个设备上
+      clone_batch_size = FLAGS.train_batch_size // FLAGS.num_clones#求出每个设备上的batch_size值
 
       dataset = data_generator.Dataset(
           dataset_name=FLAGS.dataset,
@@ -457,15 +457,15 @@ def main(unused_argv):
           num_readers=2,
           is_training=True,
           should_shuffle=True,
-          should_repeat=True)
+          should_repeat=True)#建立数据集DATASET类
 
       train_tensor, summary_op = _train_deeplab_model(
           dataset.get_one_shot_iterator(), dataset.num_of_classes,
-          dataset.ignore_label)
+          dataset.ignore_label)#返回训练op和绘图op
 
       # Soft placement allows placing on CPU ops without GPU implementation.
       session_config = tf.ConfigProto(
-          allow_soft_placement=True, log_device_placement=False)
+          allow_soft_placement=True, log_device_placement=False)#对session进行参数配置
 
       last_layers = model.get_extra_layer_scopes(
           FLAGS.last_layers_contain_logits_only)
@@ -481,7 +481,7 @@ def main(unused_argv):
       scaffold = tf.train.Scaffold(
           init_fn=init_fn,
           summary_op=summary_op,
-      )
+      )#scaffolds里面可以指定各种各样的操作符
 
       stop_hook = tf.train.StopAtStepHook(
           last_step=FLAGS.training_number_of_steps)
