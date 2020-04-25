@@ -42,7 +42,7 @@ DATA_FORMAT_NHWC = 'NHWC'
 INVALID = 'null'
 # The cap for tf.clip_by_value, it's hinted from the activation distribution
 # that the majority of activation values are in the range [-6, 6].
-CLIP_BY_VALUE_CAP = 6
+CLIP_BY_VALUE_CAP = 6   #激活值裁剪relu6
 
 
 def calc_reduction_layers(num_cells, num_reduction_layers):#给定了一共有多少个cell，和red cell的个数，将其分割插入
