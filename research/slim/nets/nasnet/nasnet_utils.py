@@ -65,8 +65,8 @@ def get_channel_index(data_format=INVALID):
 @tf.contrib.framework.add_arg_scope
 def get_channel_dim(shape, data_format=INVALID):#返回通道数
   assert data_format != INVALID
-  assert len(shape) == 4
-  if data_format == 'NHWC':
+  assert len(shape) == 4      #长度是1
+  if data_format == 'NHWC':    #根据数据的大小来返回通道个数
     return int(shape[3])
   elif data_format == 'NCHW':
     return int(shape[1])
@@ -78,10 +78,10 @@ def get_channel_dim(shape, data_format=INVALID):#返回通道数
 def global_avg_pool(x, data_format=INVALID):#全局池化层
   """Average pool away the height and width spatial dimensions of x."""
   assert data_format != INVALID
-  assert data_format in ['NHWC', 'NCHW']
+  assert data_format in ['NHWC', 'NCHW']  #保证图片形状
   assert x.shape.ndims == 4
-  if data_format == 'NHWC':
-    return tf.reduce_mean(x, [1, 2])
+  if data_format == 'NHWC':                     #是全局方式
+    return tf.reduce_mean(x, [1, 2])         
   else:
     return tf.reduce_mean(x, [2, 3])
 
@@ -271,28 +271,28 @@ class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
     self._total_training_steps = total_training_steps
     self._use_bounded_activation = use_bounded_activation
 
-  def _reduce_prev_layer(self, prev_layer, curr_layer):#和前一层维度进行匹配，对前一层进行卷积处理
+  def _reduce_prev_layer(self, prev_layer, curr_layer):#当前层和前一层通道维度进行匹配，对前一层进行卷积处理
     """Matches dimension of prev_layer to the curr_layer."""
     # Set the prev layer to the current layer if it is none
     if prev_layer is None:#如果没有给定前一层，则返回当前层
       return curr_layer
-    curr_num_filters = self._filter_size
+    curr_num_filters = self._filter_size    #当前层通道个数
     prev_num_filters = get_channel_dim(prev_layer.shape)#返回前一层通道数
     
     curr_filter_shape = int(curr_layer.shape[2])#当前层大小
-    prev_filter_shape = int(prev_layer.shape[2])#前层大小
+    prev_filter_shape = int(prev_layer.shape[2])#前一层大小
     
-    activation_fn = tf.nn.relu6 if self._use_bounded_activation else tf.nn.relu
+    activation_fn = tf.nn.relu6 if self._use_bounded_activation else tf.nn.relu  #激活函数指定
     
     if curr_filter_shape != prev_filter_shape:#如果当前滤波尺寸和浅层不一样大小
-      prev_layer = activation_fn(prev_layer)#激活
+      prev_layer = activation_fn(prev_layer)#激活前一层
       prev_layer = factorized_reduction(
           prev_layer, curr_num_filters, stride=2)#当stride=1就是标准卷积，否则执行两个并行的卷积，1*1卷积
     elif curr_num_filters != prev_num_filters:#滤波个数不同
-      prev_layer = activation_fn(prev_layer)
+      prev_layer = activation_fn(prev_layer)#激活前一层
       prev_layer = slim.conv2d(
           prev_layer, curr_num_filters, 1, scope='prev_1x1')#执行1*1卷积
-      prev_layer = slim.batch_norm(prev_layer, scope='prev_bn')
+      prev_layer = slim.batch_norm(prev_layer, scope='prev_bn')#BN层
     return prev_layer
 
   def _cell_base(self, net, prev_layer):
@@ -301,7 +301,7 @@ class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
 
     # Check to be sure prev layer stuff is setup correctly
     prev_layer = self._reduce_prev_layer(prev_layer, net)#对前一层进行卷积处理，让他和当前层尺寸相当
-
+    #还要对当前层再进行卷积处理一下
     net = tf.nn.relu6(net) if self._use_bounded_activation else tf.nn.relu(net)#激活
     net = slim.conv2d(net, num_filters, 1, scope='1x1')#1*1卷积
     net = slim.batch_norm(net, scope='beginning_bn')#BN层
@@ -313,19 +313,19 @@ class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
   def __call__(self, net, scope=None, filter_scaling=1, stride=1,
                prev_layer=None, cell_num=-1, current_step=None):#运行函数
     """Runs the conv cell."""
-    self._cell_num = cell_num#cell个数
+    self._cell_num = cell_num#cell个数，有个net还有一个prev_layer两个输入，但是最开始的时候没有prev_layer
     self._filter_scaling = filter_scaling#通道缩放
     self._filter_size = int(self._num_conv_filters * filter_scaling)#是否改变滤波的个数32*2.0
 
     i = 0
     with tf.variable_scope(scope):
-      net = self._cell_base(net, prev_layer)#[net,pre_layer]
-      for iteration in range(5):#B=5
+      net = self._cell_base(net, prev_layer)#[net,pre_layer]将前一层和当前层全部处理一下，再返回，准备作为cell的输入
+      for iteration in range(5):#B=5 这个就是一个cell内部
         with tf.variable_scope('comb_iter_{}'.format(iteration)):
           left_hiddenstate_idx, right_hiddenstate_idx = (
               self._hiddenstate_indices[i],
               self._hiddenstate_indices[i + 1])#左边的状态索引，右边的状态索引[0, 1, 0, 1, 0, 1, 3, 2, 2, 0]
-          original_input_left = left_hiddenstate_idx < 2
+          original_input_left = left_hiddenstate_idx < 2            #0，1是指用的初始特征
           original_input_right = right_hiddenstate_idx < 2
           h1 = net[left_hiddenstate_idx]#从状态列表中，根据索引拿出两个状态h1,和h2
           h2 = net[right_hiddenstate_idx]
@@ -349,7 +349,7 @@ class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
           with tf.variable_scope('left'):
             h1 = self._apply_conv_operation(h1, operation_left,
                                             stride, original_input_left,
-                                            current_step)
+                                            current_step)#处理左边输入
           with tf.variable_scope('right'):
             h2 = self._apply_conv_operation(h2, operation_right,
                                             stride, original_input_right,
@@ -399,7 +399,7 @@ class NasNetABaseCell(object):#基cell，为reducecell和normcell的基类
         net = slim.conv2d(net, filter_size, 1, stride=1, scope='1x1')
         net = slim.batch_norm(net, scope='bn_1')
       if self._use_bounded_activation:
-        net = tf.clip_by_value(net, -CLIP_BY_VALUE_CAP, CLIP_BY_VALUE_CAP)
+        net = tf.clip_by_value(net, -CLIP_BY_VALUE_CAP, CLIP_BY_VALUE_CAP)#进行激活值的裁剪
     else:
       raise ValueError('Unimplemented operation', operation)
 
